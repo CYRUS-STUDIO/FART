@@ -41,12 +41,9 @@ FART 6.0 8.0镜像地址:
 链接：https://pan.baidu.com/s/1c3AyDZ92vVPxt06xwjFO9w 
 提取码：1yzb
 
-联系邮箱：edunwu@gmail.com 另外建立了个qq群方便交流,群内提供学术交流并上传最新相关资料，感兴趣的可以扫描二维码加群。
+FART交流群。
 
-qq群二维码
-<p align="center">
-  <img width="200" height="200" src="https://shop.io.mi-img.com/app/shop/img?id=shop_120792e8e3796da77247e610eb8e39cf.jpeg">
-</p>
+https://t.me/+BvJFRSInoo05NTA5
 
 --------------------------------------------------------------------------------------------------
 添加frida版的fart的两种不同实现，各有特色。可以实现具体到对某一个类下的所有函数甚至是对某一个函数的CodeItem的dump。需要的可以去体验下其强大的脱壳能力。(注意，测试环境为pixel Android8.0,frida-server 12.8.0)
