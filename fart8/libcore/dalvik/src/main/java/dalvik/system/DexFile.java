@@ -388,7 +388,6 @@ public final class DexFile {
     
     //add
     private static native void dumpMethodCode(Object m);
-    //add
     private static native boolean isBackedByOatFile(Object cookie);
     /*
      * Open a DEX file.  The value returned is a magic VM cookie.  On

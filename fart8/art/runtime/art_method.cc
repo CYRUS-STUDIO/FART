@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include "../../../fart6/art/runtime/art_method.h"
+#include "art_method.h"
 
 #include <cstddef>
 
@@ -45,9 +45,8 @@
 #include "runtime_callbacks.h"
 #include "scoped_thread_state_change-inl.h"
 #include "well_known_classes.h"
-//added code
 
-
+//add
 #include <sys/syscall.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -70,9 +69,11 @@
 #include <time.h>
 #include <unistd.h>
 
+//add
 #define gettidv1() syscall(__NR_gettid)
 #define LOG_TAG "ActivityThread"
 #define ALOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
+
 namespace art {
 
 using android::base::StringPrintf;
@@ -83,11 +84,10 @@ extern "C" void art_quick_invoke_static_stub(ArtMethod*, uint32_t*, uint32_t, Th
                                              const char*);
 
 // Enforce that we he have the right index for runtime methods.
-static_assert(ArtMethod::kRuntimeMethodDexMethodIndex == DexFile::kDexNoIndex,
-              "Wrong runtime-method dex method index");
+static_assert(ArtMethod::kRuntimeMethodDexMethodIndex == DexFile::kDexNoIndex, "Wrong runtime-method dex method index");
+
 //add
-uint8_t* codeitem_end(const uint8_t **pData)
-{
+uint8_t* codeitem_end(const uint8_t **pData){
     uint32_t num_of_list = DecodeUnsignedLeb128(pData);
     for (;num_of_list>0;num_of_list--) {
         int32_t num_of_handlers=DecodeSignedLeb128(pData);
@@ -106,12 +106,14 @@ uint8_t* codeitem_end(const uint8_t **pData)
     return (uint8_t*)(*pData);
 }
 
+//add
 extern "C" char *base64_encode(char *str,long str_len,long* outlen){
 	long len;   
     char *res;  
     int i,j;  
     const char *base64_table="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";  
-    if(str_len % 3 == 0)  
+
+    if(str_len % 3 == 0)
         len=str_len/3*4;  
     else  
         len=(str_len/3+1)*4;  
@@ -119,16 +121,15 @@ extern "C" char *base64_encode(char *str,long str_len,long* outlen){
     res=(char*)malloc(sizeof(char)*(len+1));  
     res[len]='\0';  
     *outlen=len;
-    for(i=0,j=0;i<len-2;j+=3,i+=4)  
-    {  
+
+    for(i=0,j=0;i<len-2;j+=3,i+=4){
         res[i]=base64_table[str[j]>>2];  
         res[i+1]=base64_table[(str[j]&0x3)<<4 | (str[j+1]>>4)]; 
         res[i+2]=base64_table[(str[j+1]&0xf)<<2 | (str[j+2]>>6)]; 
         res[i+3]=base64_table[str[j+2]&0x3f]; 
     }  
   
-    switch(str_len % 3)  
-    {  
+    switch(str_len % 3){
         case 1:  
             res[i-2]='=';  
             res[i-1]='=';  
@@ -136,10 +137,11 @@ extern "C" char *base64_encode(char *str,long str_len,long* outlen){
         case 2:  
             res[i-1]='=';  
             break;  
-    }  
-  
+    }
     return res;  
-	}
+}
+
+//add
 extern "C" void dumpdexfilebyExecute(ArtMethod* artmethod)  REQUIRES_SHARED(Locks::mutator_lock_) {
 			char *dexfilepath=(char*)malloc(sizeof(char)*1000);	
 			if(dexfilepath==nullptr)
@@ -244,6 +246,7 @@ extern "C" void dumpdexfilebyExecute(ArtMethod* artmethod)  REQUIRES_SHARED(Lock
 		
 }
 
+//add
 extern "C" void dumpArtMethod(ArtMethod* artmethod)  REQUIRES_SHARED(Locks::mutator_lock_) {
 			char *dexfilepath=(char*)malloc(sizeof(char)*1000);	
 			if(dexfilepath==nullptr)
@@ -399,8 +402,9 @@ extern "C" void dumpArtMethod(ArtMethod* artmethod)  REQUIRES_SHARED(Locks::muta
 				free(dexfilepath);
 				dexfilepath=nullptr;
 			}
-		
 }
+
+//add
 extern "C" void myfartInvoke(ArtMethod* artmethod)  REQUIRES_SHARED(Locks::mutator_lock_) {
 	JValue *result=nullptr;
 	Thread *self=nullptr;
@@ -409,7 +413,7 @@ extern "C" void myfartInvoke(ArtMethod* artmethod)  REQUIRES_SHARED(Locks::mutat
 	uint32_t args_size=6;
 	artmethod->Invoke(self, args, args_size, result, "fart");
 }
-//addend
+
 ArtMethod* ArtMethod::GetNonObsoleteMethod() {
   DCHECK_EQ(kRuntimePointerSize, Runtime::Current()->GetClassLinker()->GetImagePointerSize());
   if (LIKELY(!IsObsolete())) {

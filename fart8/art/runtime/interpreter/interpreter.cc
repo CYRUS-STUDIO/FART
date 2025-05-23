@@ -245,12 +245,9 @@ static inline JValue Execute(
     bool stay_in_interpreter = false) REQUIRES_SHARED(Locks::mutator_lock_) {
 		
 		
-	if(strstr(shadow_frame.GetMethod()->PrettyMethod().c_str(),"<clinit>"))
-	{
+	if(strstr(shadow_frame.GetMethod()->PrettyMethod().c_str(),"<clinit>")) {
 		dumpdexfilebyExecute(shadow_frame.GetMethod());
-		}
-
-		
+    }
 		
   DCHECK(!shadow_frame.GetMethod()->IsAbstract());
   DCHECK(!shadow_frame.GetMethod()->IsNative());

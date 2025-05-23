@@ -155,7 +155,6 @@ import org.apache.harmony.dalvik.ddmc.DdmVmInternal;
 //add
 import android.app.Application;
 import android.util.ArrayMap;
-
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -282,7 +281,6 @@ public final class ActivityThread {
     
     //add
     public static HashMap<String, String> dumpClassm_hashmap = new HashMap<>();
-    //add
 
     // These can be accessed by multiple threads; mResourcesManager is the lock.
     // XXX For now we keep around information about all packages we have
@@ -2701,10 +2699,11 @@ public final class ActivityThread {
     }
 
     private Activity performLaunchActivity(ActivityClientRecord r, Intent customIntent) {
+
+        //add
         // System.out.println("##### [" + System.currentTimeMillis() + "] ActivityThread.performLaunchActivity(" + r + ")");
         Log.e("ActivityThread","go into performLaunchActivity");
-        
-        
+
         ActivityInfo aInfo = r.activityInfo;
         if (r.packageInfo == null) {
             r.packageInfo = getPackageInfo(aInfo.applicationInfo, r.compatInfo,
@@ -2844,8 +2843,6 @@ public final class ActivityThread {
         
         //add
         fartthread();
-		//add
-		
 
         return activity;
     }
@@ -5476,7 +5473,8 @@ public final class ActivityThread {
         // to the front of the list.
         LocaleList.setDefault(new LocaleList(bestLocale, newLocaleList));
     }
- //add
+
+  //add
   public static Field getClassField(ClassLoader classloader, String class_name,
                                       String filedName) {
 
@@ -5498,6 +5496,7 @@ public final class ActivityThread {
 
     }
 
+    //add
     public static Object getClassFieldObject(ClassLoader classloader, String class_name, Object obj,
                                              String filedName) {
 
@@ -5523,6 +5522,7 @@ public final class ActivityThread {
 
     }
 
+    //add
     public static Object invokeStaticMethod(String class_name,
                                             String method_name, Class[] pareTyple, Object[] pareVaules) {
 
@@ -5547,6 +5547,7 @@ public final class ActivityThread {
 
     }
 
+    //add
     public static Object getFieldOjbect(String class_name, Object obj,
                                         String filedName) {
         try {
@@ -5571,6 +5572,7 @@ public final class ActivityThread {
 
     }
 
+    //add
     public static ClassLoader getClassloader() {
         ClassLoader resultClassloader = null;
         Object currentActivityThread = invokeStaticMethod(
@@ -5588,6 +5590,8 @@ public final class ActivityThread {
         resultClassloader = mApplication.getClassLoader();
         return resultClassloader;
     }
+
+    //add
     public static void loadClassAndInvoke(ClassLoader appClassloader, String eachclassname, Method dumpMethodCode_method) {
         Class resultclass = null;
         Log.i("ActivityThread", "go into loadClassAndInvoke->" + "classname:" + eachclassname);
@@ -5650,6 +5654,8 @@ public final class ActivityThread {
             }
         }
     }
+
+    //add
     public static void fart() {
         ClassLoader appClassloader = getClassloader();
         ClassLoader tmpClassloader=appClassloader;
@@ -5667,6 +5673,8 @@ public final class ActivityThread {
             parentClassloader=parentClassloader.getParent();
         }
     }
+
+    //add
     public static void fartwithClassloader(ClassLoader appClassloader) {
         List<Object> dexFilesArray = new ArrayList<Object>();
         Field pathList_Field = (Field) getClassField(appClassloader, "dalvik.system.BaseDexClassLoader", "pathList");
@@ -5761,7 +5769,8 @@ public final class ActivityThread {
         }
         return;
     }
-   
+
+    //add
     public static void fartthread() {
         new Thread(new Runnable() {
 
@@ -5782,12 +5791,13 @@ public final class ActivityThread {
             }
         }).start();
     }
-  //add
+
     private void handleBindApplication(AppBindData data) {
         // Register the UI Thread as a sensitive thread to the runtime.
-        
-        
+
+        //add
         Log.e("ActivityThread","go into handleBindApplication");
+
         VMRuntime.registerSensitiveThread();
         if (data.trackAllocation) {
             DdmVmInternal.enableRecentAllocations(true);
