@@ -202,26 +202,23 @@ import java.util.TimeZone;
 import java.util.concurrent.Executor;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import android.os.Build;
+//add
+import android.app.Application;
 import android.util.ArrayMap;
-import android.util.Log;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.FileWriter;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.ref.WeakReference;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
-import java.lang.reflect.Constructor;
-import dalvik.system.BaseDexClassLoader;
-import dalvik.system.DexClassLoader;
 
 final class RemoteServiceException extends AndroidRuntimeException {
     public RemoteServiceException(String msg) {
@@ -384,6 +381,10 @@ public final class ActivityThread extends ClientTransactionHandler {
     boolean mSystemThread = false;
     boolean mSomeActivitiesChanged = false;
     boolean mUpdatingSystemConfig = false;
+
+    //add
+    public static HashMap<String, String> dumpClassm_hashmap = new HashMap<>();
+
     /* package */ boolean mHiddenApiWarningShown = false;
 
     // These can be accessed by multiple threads; mResourcesManager is the lock.
@@ -6147,6 +6148,8 @@ public final class ActivityThread extends ClientTransactionHandler {
 
     @UnsupportedAppUsage
     private void handleBindApplication(AppBindData data) {
+
+        //add
         Log.e("ActivityThread","go into handleBindApplication");
 
         // Register the UI Thread as a sensitive thread to the runtime.
@@ -7404,7 +7407,7 @@ public final class ActivityThread extends ClientTransactionHandler {
                                       String filedName) {
 
         try {
-            Class obj_class = classloader.loadClass(class_name);
+            Class obj_class = classloader.loadClass(class_name);//Class.forName(class_name);
             Field field = obj_class.getDeclaredField(filedName);
             field.setAccessible(true);
             return field;
@@ -7421,11 +7424,12 @@ public final class ActivityThread extends ClientTransactionHandler {
 
     }
 
+    //add
     public static Object getClassFieldObject(ClassLoader classloader, String class_name, Object obj,
                                              String filedName) {
 
         try {
-            Class obj_class = classloader.loadClass(class_name);
+            Class obj_class = classloader.loadClass(class_name);//Class.forName(class_name);
             Field field = obj_class.getDeclaredField(filedName);
             field.setAccessible(true);
             Object result = null;
@@ -7446,6 +7450,7 @@ public final class ActivityThread extends ClientTransactionHandler {
 
     }
 
+    //add
     public static Object invokeStaticMethod(String class_name,
                                             String method_name, Class[] pareTyple, Object[] pareVaules) {
 
@@ -7470,7 +7475,7 @@ public final class ActivityThread extends ClientTransactionHandler {
 
     }
 
-
+    //add
     public static Object getFieldOjbect(String class_name, Object obj,
                                         String filedName) {
         try {
@@ -7488,20 +7493,24 @@ public final class ActivityThread extends ClientTransactionHandler {
             e.printStackTrace();
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
+        } catch (NullPointerException e) {
+            e.printStackTrace();
         }
         return null;
 
     }
 
+    //add
     public static ClassLoader getClassloader() {
         ClassLoader resultClassloader = null;
-
         Object currentActivityThread = invokeStaticMethod(
                 "android.app.ActivityThread", "currentActivityThread",
                 new Class[]{}, new Object[]{});
         Object mBoundApplication = getFieldOjbect(
                 "android.app.ActivityThread", currentActivityThread,
                 "mBoundApplication");
+        Application mInitialApplication = (Application) getFieldOjbect("android.app.ActivityThread",
+                currentActivityThread, "mInitialApplication");
         Object loadedApkInfo = getFieldOjbect(
                 "android.app.ActivityThread$AppBindData",
                 mBoundApplication, "info");
@@ -7510,9 +7519,10 @@ public final class ActivityThread extends ClientTransactionHandler {
         return resultClassloader;
     }
 
+    //add
     public static void loadClassAndInvoke(ClassLoader appClassloader, String eachclassname, Method dumpMethodCode_method) {
-        Log.i("ActivityThread", "go into loadClassAndInvoke->" + "classname:" + eachclassname);
         Class resultclass = null;
+        Log.i("ActivityThread", "go into loadClassAndInvoke->" + "classname:" + eachclassname);
         try {
             resultclass = appClassloader.loadClass(eachclassname);
         } catch (Exception e) {
@@ -7573,8 +7583,27 @@ public final class ActivityThread extends ClientTransactionHandler {
         }
     }
 
+    //add
     public static void fart() {
         ClassLoader appClassloader = getClassloader();
+        ClassLoader tmpClassloader=appClassloader;
+        ClassLoader parentClassloader=appClassloader.getParent();
+        if(appClassloader.toString().indexOf("java.lang.BootClassLoader")==-1)
+        {
+            fartwithClassloader(appClassloader);
+        }
+        while(parentClassloader!=null){
+            if(parentClassloader.toString().indexOf("java.lang.BootClassLoader")==-1)
+            {
+                fartwithClassloader(parentClassloader);
+            }
+            tmpClassloader=parentClassloader;
+            parentClassloader=parentClassloader.getParent();
+        }
+    }
+
+    //add
+    public static void fartwithClassloader(ClassLoader appClassloader) {
         List<Object> dexFilesArray = new ArrayList<Object>();
         Field pathList_Field = (Field) getClassField(appClassloader, "dalvik.system.BaseDexClassLoader", "pathList");
         Object pathList_object = getFieldOjbect("dalvik.system.BaseDexClassLoader", appClassloader, "pathList");
@@ -7584,11 +7613,15 @@ public final class ActivityThread extends ClientTransactionHandler {
             dexFile_fileField = (Field) getClassField(appClassloader, "dalvik.system.DexPathList$Element", "dexFile");
         } catch (Exception e) {
             e.printStackTrace();
+        } catch (Error e) {
+            e.printStackTrace();
         }
         Class DexFileClazz = null;
         try {
             DexFileClazz = appClassloader.loadClass("dalvik.system.DexFile");
         } catch (Exception e) {
+            e.printStackTrace();
+        } catch (Error e) {
             e.printStackTrace();
         }
         Method getClassNameList_method = null;
@@ -7605,12 +7638,17 @@ public final class ActivityThread extends ClientTransactionHandler {
                 defineClass_method = field;
                 defineClass_method.setAccessible(true);
             }
+            if (field.getName().equals("dumpDexFile")) {
+                dumpDexFile_method = field;
+                dumpDexFile_method.setAccessible(true);
+            }
             if (field.getName().equals("dumpMethodCode")) {
                 dumpMethodCode_method = field;
                 dumpMethodCode_method.setAccessible(true);
             }
         }
         Field mCookiefield = getClassField(appClassloader, "dalvik.system.DexFile", "mCookie");
+        Log.v("ActivityThread->methods", "dalvik.system.DexPathList.ElementsArray.length:" + ElementsArray.length);//5个
         for (int j = 0; j < ElementsArray.length; j++) {
             Object element = ElementsArray[j];
             Object dexfile = null;
@@ -7618,15 +7656,26 @@ public final class ActivityThread extends ClientTransactionHandler {
                 dexfile = (Object) dexFile_fileField.get(element);
             } catch (Exception e) {
                 e.printStackTrace();
+            } catch (Error e) {
+                e.printStackTrace();
             }
             if (dexfile == null) {
+                Log.e("ActivityThread", "dexfile is null");
                 continue;
             }
             if (dexfile != null) {
                 dexFilesArray.add(dexfile);
                 Object mcookie = getClassFieldObject(appClassloader, "dalvik.system.DexFile", dexfile, "mCookie");
                 if (mcookie == null) {
-                    continue;
+                    Object mInternalCookie = getClassFieldObject(appClassloader, "dalvik.system.DexFile", dexfile, "mInternalCookie");
+                    if(mInternalCookie!=null)
+                    {
+                        mcookie=mInternalCookie;
+                    }else{
+                        Log.v("ActivityThread->err", "get mInternalCookie is null");
+                        continue;
+                    }
+
                 }
                 String[] classnames = null;
                 try {
@@ -7649,23 +7698,25 @@ public final class ActivityThread extends ClientTransactionHandler {
         return;
     }
 
+    //add
     public static void fartthread() {
         new Thread(new Runnable() {
 
             @Override
             public void run() {
+                // TODO Auto-generated method stub
                 try {
-                    Log.e("ActivityThread", "start sleep,wait for fartthread start......");
+                    Log.e("ActivityThread", "start sleep......");
                     Thread.sleep(1 * 60 * 1000);
                 } catch (InterruptedException e) {
+                    // TODO Auto-generated catch block
                     e.printStackTrace();
                 }
-                Log.e("ActivityThread", "sleep over and start fartthread");
+                Log.e("ActivityThread", "sleep over and start fart");
                 fart();
                 Log.e("ActivityThread", "fart run over");
 
             }
         }).start();
     }
-    //add
 }

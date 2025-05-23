@@ -677,6 +677,6 @@ public final class DexFile {
     }
 
     private static native long getStaticSizeOfDexFile(Object cookie);
-
+    //add
     private static native void dumpMethodCode(Object m);
 }

@@ -52,27 +52,23 @@
 #include "scoped_thread_state_change-inl.h"
 #include "well_known_classes.h"
 
-#include "art_method-inl.h"
-#include "class_linker.h"
-#include "mirror/class-inl.h"
-#include "mirror/object-inl.h"
-#include "mirror/object_array-inl.h"
-#include "reflection.h"
+//add
 #include "scoped_fast_native_object_access-inl.h"
-#include "well_known_classes.h"
 
 namespace art {
 
+    //add
     extern "C" void myfartInvoke(ArtMethod* artmethod);
+    //add
+    extern "C" ArtMethod* jobject2ArtMethod(JNIEnv* env, jobject javaMethod);
 
     using android::base::StringPrintf;
 
-//addfunction
+    //add
     static void DexFile_dumpMethodCode(JNIEnv* env, jclass,jobject method) {
-        ScopedFastNativeObjectAccess soa(env);
-        if(method != nullptr){
-            ArtMethod* artmethod = ArtMethod::FromReflectedMethod(soa, method);
-            myfartInvoke(artmethod);
+        if(method!=nullptr) {
+            ArtMethod* proxy_method = jobject2ArtMethod(env, method);
+            myfartInvoke(proxy_method);
         }
         return;
     }
