@@ -3297,7 +3297,7 @@ public final class ActivityThread extends ClientTransactionHandler {
         }
 
         //add
-        fartthread();
+//        fartthread();
 
         return activity;
     }
