@@ -178,6 +178,8 @@ namespace art {
             if (dexfilefp > 0) {
                 close(dexfilefp);
             } else {
+                LOG(INFO) << "[dumpDexFileByExecute]" << artmethod->PrettyMethod();
+
                 int fp = open(dex_path.c_str(), O_CREAT | O_APPEND | O_RDWR, 0666);
                 if (fp > 0) {
                     ssize_t w1 = write(fp, begin_, size_);
@@ -586,6 +588,7 @@ namespace art {
                            const char* shorty) {
         //add
         if (self == nullptr) {
+            LOG(INFO) << "[ArtMethod::Invoke]" << this->PrettyMethod();
             dumpArtMethod(this);
             return;
         }

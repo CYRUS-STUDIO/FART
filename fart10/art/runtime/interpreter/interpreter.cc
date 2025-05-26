@@ -257,8 +257,7 @@ namespace art {
                 bool from_deoptimize = false) REQUIRES_SHARED(Locks::mutator_lock_) {
 
                 //add
-                LOG(INFO) << "[Execute]" << shadow_frame.GetMethod()->PrettyMethod();
-                if(strstr(shadow_frame.GetMethod()->PrettyMethod().c_str(),"<clinit>")!=nullptr) {
+                if(strstr(shadow_frame.GetMethod()->PrettyMethod().c_str(),"<clinit>") != nullptr) {
                     dumpDexFileByExecute(shadow_frame.GetMethod());
                 }
 
