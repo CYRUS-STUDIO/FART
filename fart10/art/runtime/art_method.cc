@@ -143,6 +143,26 @@ namespace art {
         return res;
     }
 
+    //add 创建目录
+    bool ensure_dir_exists(const std::string& path) {
+        int res = mkdir(path.c_str(), 0777);
+        if (res == 0 || errno == EEXIST) {
+            return true;
+        } else {
+            LOG(ERROR) << "mkdir failed: " << path << ", errno=" << errno << ", " << errno;
+            return false;
+        }
+    }
+
+    //add 跳过 Android 编译构建阶段的 dex2oatd 工具执行时的调用
+    bool isValidAndroidApp(const char* procName) {
+        // 排除 host 工具，例如 dex2oat、dex2oatd、aapt2 等
+        return procName != nullptr &&
+               strstr(procName, "/") == nullptr &&         // 不应该包含路径
+               strstr(procName, "dex2oat") == nullptr &&   // 排除 dex2oat/dex2oatd
+               strstr(procName, "soong") == nullptr;       // 排除构建系统相关路径
+    }
+
     //add
     extern "C" void dumpDexFileByExecute(ArtMethod* artmethod) REQUIRES_SHARED(Locks::mutator_lock_) {
             char szCmdline[64] = {0};
@@ -151,37 +171,52 @@ namespace art {
             snprintf(szCmdline, sizeof(szCmdline), "/proc/%d/cmdline", procid);
 
             int fcmdline = open(szCmdline, O_RDONLY);
-            if (fcmdline > 0) {
+            if (fcmdline >= 0) {
                 ssize_t result = read(fcmdline, szProcName, sizeof(szProcName) - 1);
                 if (result < 0) {
                     LOG(ERROR) << "dumpDexFileByExecute: Failed to read cmdline";
                 }
                 close(fcmdline);
+            } else {
+                LOG(ERROR) << "[dumpDexFileByExecute] " << szCmdline << " open failed ";
             }
 
-            if (szProcName[0] == '\0') return;
+            if (szProcName[0] == '\0') {
+                LOG(WARNING) << "[dumpDexFileByExecute] 获取进程名失败：" << artmethod->PrettyMethod();
+                return;
+            }
+
+            if (!isValidAndroidApp(szProcName)) {
+                LOG(WARNING) << "[dumpDexFileByExecute] 当前进程 " << szProcName << " 非法，跳过 dex dump";
+                return;
+            }
 
             const DexFile* dex_file = artmethod->GetDexFile();
             const uint8_t* begin_ = dex_file->Begin();
             size_t size_ = dex_file->Size();
             int size_int = static_cast<int>(size_);
 
-            std::string base_dir = "/sdcard/fart/";
+            // 创建目录：/sdcard/Android/data/<packageName>/fart
+            std::string base_dir = "/sdcard/Android/data/";
             std::string app_dir = base_dir + szProcName;
-            std::string dex_path = app_dir + "/" + std::to_string(size_int) + "_dexfile_execute.dex";
-            std::string classlist_path = app_dir + "/" + std::to_string(size_int) + "_classlist_execute.txt";
+            std::string fart_dir = app_dir + "/fart";
 
-            mkdir(base_dir.c_str(), 0777);
-            mkdir(app_dir.c_str(), 0777);
+            ensure_dir_exists(app_dir);
+            ensure_dir_exists(fart_dir);
 
+            // 保存 dex 文件
+            std::string dex_path = fart_dir + "/" + std::to_string(size_int) + "_dex_file_execute.dex";
+            // 保存 class 列表
+            std::string classlist_path = fart_dir + "/" + std::to_string(size_int) + "_class_list_execute.txt";
+            
             int dexfilefp = open(dex_path.c_str(), O_RDONLY);
-            if (dexfilefp > 0) {
+            if (dexfilefp >= 0) {
                 close(dexfilefp);
             } else {
-                LOG(INFO) << "[dumpDexFileByExecute]" << artmethod->PrettyMethod();
+                LOG(INFO) << "[dumpDexFileByExecute] " << artmethod->PrettyMethod() << " dump dex to " << dex_path;
 
                 int fp = open(dex_path.c_str(), O_CREAT | O_APPEND | O_RDWR, 0666);
-                if (fp > 0) {
+                if (fp >= 0) {
                     ssize_t w1 = write(fp, begin_, size_);
                     if (w1 < 0) {
                         LOG(ERROR) << "dumpDexFileByExecute: Failed to write dex file";
@@ -189,25 +224,29 @@ namespace art {
                     fsync(fp);
                     close(fp);
 
-                    int classlistfile = open(classlist_path.c_str(), O_CREAT | O_APPEND | O_RDWR, 0666);
-                    if (classlistfile > 0) {
+                    int class_list_file = open(classlist_path.c_str(), O_CREAT | O_APPEND | O_RDWR, 0666);
+                    if (class_list_file >= 0) {
                         for (size_t ii = 0; ii < dex_file->NumClassDefs(); ++ii) {
                             const dex::ClassDef& class_def = dex_file->GetClassDef(ii);
                             const char* descriptor = dex_file->GetClassDescriptor(class_def);
 
-                            ssize_t w2 = write(classlistfile, descriptor, strlen(descriptor));
+                            ssize_t w2 = write(class_list_file, descriptor, strlen(descriptor));
                             if (w2 < 0) {
                                 LOG(ERROR) << "dumpDexFileByExecute: Failed to write class descriptor";
                             }
 
-                            ssize_t w3 = write(classlistfile, "\n", 1);
+                            ssize_t w3 = write(class_list_file, "\n", 1);
                             if (w3 < 0) {
                                 LOG(ERROR) << "dumpDexFileByExecute: Failed to write newline";
                             }
                         }
-                        fsync(classlistfile);
-                        close(classlistfile);
+                        fsync(class_list_file);
+                        close(class_list_file);
+                    } else {
+                        LOG(ERROR) << "[dumpDexFileByExecute] " << class_list_file << " open failed, class_list_file=" << class_list_file;
                     }
+                } else {
+                    LOG(ERROR) << "[dumpDexFileByExecute] " << dex_path << " open failed, fp=" << fp;
                 }
             }
     }
@@ -221,63 +260,82 @@ namespace art {
             char szCmdline[64] = {0};
             snprintf(szCmdline, sizeof(szCmdline), "/proc/%d/cmdline", procid);
             int fcmdline = open(szCmdline, O_RDONLY);
-            if (fcmdline > 0) {
+            if (fcmdline >= 0) {
                 ssize_t result = read(fcmdline, szProcName, sizeof(szProcName) - 1);
                 if (result < 0) {
                     LOG(ERROR) << "ArtMethod::dumpArtMethod: read cmdline failed.";
                 }
                 close(fcmdline);
+            } else {
+                LOG(ERROR) << "[dumpArtMethod] " << szCmdline << " open failed ";
             }
 
-            if (szProcName[0] == '\0') return;
+            if (szProcName[0] == '\0') {
+                LOG(WARNING) << "[dumpArtMethod] 获取进程名失败：" << artmethod->PrettyMethod();
+                return;
+            }
+
+            if (!isValidAndroidApp(szProcName)) {
+                LOG(WARNING) << "[dumpArtMethod] 当前进程 " << szProcName << " 非法，跳过 dex dump";
+                return;
+            }
 
             const DexFile* dex_file = artmethod->GetDexFile();
             const uint8_t* begin_ = dex_file->Begin();
             size_t size_ = dex_file->Size();
             int size_int = static_cast<int>(size_);
 
-            // 路径拼接
-            std::string baseDir = "/sdcard/fart/";
-            std::string processDir = baseDir + szProcName;
-            mkdir(baseDir.c_str(), 0777);
-            mkdir(processDir.c_str(), 0777);
+            // 创建目录：/sdcard/Android/data/<packageName>/fart
+            std::string base_dir = "/sdcard/Android/data/";
+            std::string app_dir = base_dir + szProcName;
+            std::string fart_dir = app_dir + "/fart";
+
+            ensure_dir_exists(app_dir);
+            ensure_dir_exists(fart_dir);
 
             // 保存 dex 文件
-            std::string dexPath = processDir + "/" + std::to_string(size_int) + "_dexfile.dex";
-            int dexfilefp = open(dexPath.c_str(), O_RDONLY);
-            if (dexfilefp > 0) {
+            std::string dex_path = fart_dir + "/" + std::to_string(size_int) + "_dex_file.dex";
+            // 保存 class 列表
+            std::string class_list_path = fart_dir + "/" + std::to_string(size_int) + "_class_list.txt";
+
+            int dexfilefp = open(dex_path.c_str(), O_RDONLY);
+            if (dexfilefp >= 0) {
                 close(dexfilefp);
             } else {
-                int fp = open(dexPath.c_str(), O_CREAT | O_APPEND | O_RDWR, 0666);
-                if (fp > 0) {
+                LOG(INFO) << "[dumpArtMethod]" << artmethod->PrettyMethod() << " dump to " << dex_path;
+
+                int fp = open(dex_path.c_str(), O_CREAT | O_APPEND | O_RDWR, 0666);
+                if (fp >= 0) {
                     ssize_t w = write(fp, begin_, size_);
                     if (w < 0) {
-                        LOG(ERROR) << "ArtMethod::dumpArtMethod: write dexfile failed -> " << dexPath;
+                        LOG(ERROR) << "ArtMethod::dumpArtMethod: write dexfile failed -> " << dex_path;
                     }
                     fsync(fp);
                     close(fp);
-
-                    // 保存 class 列表
-                    std::string classListPath = processDir + "/" + std::to_string(size_int) + "_classlist.txt";
-                    int classlistfile = open(classListPath.c_str(), O_CREAT | O_APPEND | O_RDWR, 0666);
-                    if (classlistfile > 0) {
+                    
+                    int class_list_file = open(class_list_path.c_str(), O_CREAT | O_APPEND | O_RDWR, 0666);
+                    if (class_list_file >= 0) {
                         for (size_t i = 0; i < dex_file->NumClassDefs(); ++i) {
                             const dex::ClassDef& class_def = dex_file->GetClassDef(i);
                             const char* descriptor = dex_file->GetClassDescriptor(class_def);
 
-                            ssize_t w1 = write(classlistfile, descriptor, strlen(descriptor));
+                            ssize_t w1 = write(class_list_file, descriptor, strlen(descriptor));
                             if (w1 < 0) {
                                 LOG(ERROR) << "ArtMethod::dumpArtMethod: write class descriptor failed";
                             }
 
-                            ssize_t w2 = write(classlistfile, "\n", 1);
+                            ssize_t w2 = write(class_list_file, "\n", 1);
                             if (w2 < 0) {
                                 LOG(ERROR) << "ArtMethod::dumpArtMethod: write newline failed";
                             }
                         }
-                        fsync(classlistfile);
-                        close(classlistfile);
+                        fsync(class_list_file);
+                        close(class_list_file);
+                    } else {
+                        LOG(ERROR) << "[dumpArtMethod] " << class_list_path << " open failed, class_list_file=" << class_list_file;
                     }
+                } else {
+                    LOG(ERROR) << "[dumpArtMethod] " << dex_path << " open failed, fp=" << fp;
                 }
             }
 
@@ -298,10 +356,11 @@ namespace art {
                 uint32_t method_idx = artmethod->GetDexMethodIndex();
                 int offset = static_cast<int>(item - begin_);
                 pid_t tid = gettidv1();
-                std::string insPath = processDir + "/" + std::to_string(size_int) + "_ins_" + std::to_string(tid) + ".bin";
+                // 保存 CodeItem
+                std::string ins_path = fart_dir + "/" + std::to_string(size_int) + "_ins_" + std::to_string(tid) + ".bin";
 
-                int fp2 = open(insPath.c_str(), O_CREAT | O_APPEND | O_RDWR, 0666);
-                if (fp2 > 0) {
+                int fp2 = open(ins_path.c_str(), O_CREAT | O_APPEND | O_RDWR, 0666);
+                if (fp2 >= 0) {
                     lseek(fp2, 0, SEEK_END);
                     std::string header = "{name:" + artmethod->PrettyMethod() +
                                          ",method_idx:" + std::to_string(method_idx) +
@@ -331,6 +390,8 @@ namespace art {
 
                     fsync(fp2);
                     close(fp2);
+                } else {
+                    LOG(ERROR) << "[dumpArtMethod] " << ins_path << " open failed, fp2=" << fp2;
                 }
             }
     }
@@ -588,7 +649,6 @@ namespace art {
                            const char* shorty) {
         //add
         if (self == nullptr) {
-            LOG(INFO) << "[ArtMethod::Invoke]" << this->PrettyMethod();
             dumpArtMethod(this);
             return;
         }
