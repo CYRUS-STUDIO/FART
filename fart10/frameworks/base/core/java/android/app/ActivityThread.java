@@ -382,9 +382,6 @@ public final class ActivityThread extends ClientTransactionHandler {
     boolean mSomeActivitiesChanged = false;
     boolean mUpdatingSystemConfig = false;
 
-    //add
-    public static HashMap<String, String> dumpClassm_hashmap = new HashMap<>();
-
     /* package */ boolean mHiddenApiWarningShown = false;
 
     // These can be accessed by multiple threads; mResourcesManager is the lock.
