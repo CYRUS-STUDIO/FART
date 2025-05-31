@@ -196,10 +196,10 @@ namespace art {
             size_t size_ = dex_file->Size();
             int size_int = static_cast<int>(size_);
 
-            // 创建目录：/sdcard/Android/data/<packageName>/fart
-            std::string base_dir = "/sdcard/Android/data/";
+            // 创建目录：/data/data/<packageName>/cyurs
+            std::string base_dir = "/data/data/";
             std::string app_dir = base_dir + szProcName;
-            std::string fart_dir = app_dir + "/fart";
+            std::string fart_dir = app_dir + "/cyurs";
 
             ensure_dir_exists(app_dir);
             ensure_dir_exists(fart_dir);
@@ -285,10 +285,10 @@ namespace art {
             size_t size_ = dex_file->Size();
             int size_int = static_cast<int>(size_);
 
-            // 创建目录：/sdcard/Android/data/<packageName>/fart
-            std::string base_dir = "/sdcard/Android/data/";
+            // 创建目录：/data/data/<packageName>/cyurs
+            std::string base_dir = "/data/data/";
             std::string app_dir = base_dir + szProcName;
-            std::string fart_dir = app_dir + "/fart";
+            std::string fart_dir = app_dir + "/cyurs";
 
             ensure_dir_exists(app_dir);
             ensure_dir_exists(fart_dir);
