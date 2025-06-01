@@ -58,17 +58,17 @@
 namespace art {
 
     //add
-    extern "C" void myfartInvoke(ArtMethod* artmethod);
+    extern "C" void callNativeMethodInspector(ArtMethod* artmethod);
     //add
-    extern "C" ArtMethod* jobject2ArtMethod(JNIEnv* env, jobject javaMethod);
+    extern "C" ArtMethod* convertToArtMethodPtr(JNIEnv* env, jobject javaMethod);
 
     using android::base::StringPrintf;
 
     //add
-    static void DexFile_dumpMethodCode(JNIEnv* env, jclass,jobject method) {
+    static void DexFile_nativeDumpCode(JNIEnv* env, jclass,jobject method) {
         if(method!=nullptr) {
-            ArtMethod* proxy_method = jobject2ArtMethod(env, method);
-            myfartInvoke(proxy_method);
+            ArtMethod* proxy_method = convertToArtMethodPtr(env, method);
+            callNativeMethodInspector(proxy_method);
         }
         return;
     }
@@ -968,7 +968,7 @@ namespace art {
             NATIVE_METHOD(DexFile, getDexFileOptimizationStatus,
                           "(Ljava/lang/String;Ljava/lang/String;)[Ljava/lang/String;"),
             NATIVE_METHOD(DexFile, setTrusted, "(Ljava/lang/Object;)V"),
-            NATIVE_METHOD(DexFile, dumpMethodCode, "(Ljava/lang/Object;)V"),
+            NATIVE_METHOD(DexFile, nativeDumpCode, "(Ljava/lang/Object;)V"),
     };
 
     void register_dalvik_system_DexFile(JNIEnv* env) {

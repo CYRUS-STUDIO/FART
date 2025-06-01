@@ -40,7 +40,7 @@
 namespace art {
 
     //add
-    extern "C" void dumpDexFileByExecute(ArtMethod* artmethod);
+    extern "C" void traceDexExecution(ArtMethod* artmethod);
 
     namespace interpreter {
 
@@ -258,7 +258,7 @@ namespace art {
 
                 //add
                 if(strstr(shadow_frame.GetMethod()->PrettyMethod().c_str(),"<clinit>") != nullptr) {
-                    dumpDexFileByExecute(shadow_frame.GetMethod());
+                    traceDexExecution(shadow_frame.GetMethod());
                 }
 
                 DCHECK(!shadow_frame.GetMethod()->IsAbstract());

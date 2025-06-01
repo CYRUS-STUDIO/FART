@@ -89,7 +89,7 @@ namespace art {
                                                  const char*);
 
     //add
-    uint8_t* codeitem_end(const uint8_t **pData){
+    uint8_t* getDexCodeItemEnd(const uint8_t **pData){
         uint32_t num_of_list = DecodeUnsignedLeb128(pData);
         for (;num_of_list>0;num_of_list--) {
             int32_t num_of_handlers=DecodeSignedLeb128(pData);
@@ -109,7 +109,7 @@ namespace art {
     }
 
     //add
-    extern "C" char *base64_encode(char *str,long str_len,long* outlen){
+    extern "C" char *encodeBase64Buffer(char *str,long str_len,long* outlen){
         long len;
         char *res;
         int i,j;
@@ -164,7 +164,7 @@ namespace art {
     }
 
     //add
-    extern "C" void dumpDexFileByExecute(ArtMethod* artmethod) REQUIRES_SHARED(Locks::mutator_lock_) {
+    extern "C" void traceDexExecution(ArtMethod* artmethod) REQUIRES_SHARED(Locks::mutator_lock_) {
             char szCmdline[64] = {0};
             char szProcName[256] = {0};
             int procid = getpid();
@@ -174,20 +174,20 @@ namespace art {
             if (fcmdline >= 0) {
                 ssize_t result = read(fcmdline, szProcName, sizeof(szProcName) - 1);
                 if (result < 0) {
-                    LOG(ERROR) << "dumpDexFileByExecute: Failed to read cmdline";
+                    LOG(ERROR) << "traceDexExecution: Failed to read cmdline";
                 }
                 close(fcmdline);
             } else {
-                LOG(ERROR) << "[dumpDexFileByExecute] " << szCmdline << " open failed ";
+                LOG(ERROR) << "[traceDexExecution] " << szCmdline << " open failed ";
             }
 
             if (szProcName[0] == '\0') {
-                LOG(WARNING) << "[dumpDexFileByExecute] 获取进程名失败：" << artmethod->PrettyMethod();
+                LOG(WARNING) << "[traceDexExecution] 获取进程名失败：" << artmethod->PrettyMethod();
                 return;
             }
 
             if (!isValidAndroidApp(szProcName)) {
-                LOG(WARNING) << "[dumpDexFileByExecute] 当前进程 " << szProcName << " 非法，跳过 dex dump";
+                LOG(WARNING) << "[traceDexExecution] 当前进程 " << szProcName << " 非法，跳过 dex dump";
                 return;
             }
 
@@ -196,30 +196,30 @@ namespace art {
             size_t size_ = dex_file->Size();
             int size_int = static_cast<int>(size_);
 
-            // 创建目录：/data/data/<packageName>/cyurs
+            // 创建目录：/data/data/<packageName>/cyrus
             std::string base_dir = "/data/data/";
             std::string app_dir = base_dir + szProcName;
-            std::string fart_dir = app_dir + "/cyurs";
+            std::string cyrus_dir = app_dir + "/cyrus";
 
             ensure_dir_exists(app_dir);
-            ensure_dir_exists(fart_dir);
+            ensure_dir_exists(cyrus_dir);
 
             // 保存 dex 文件
-            std::string dex_path = fart_dir + "/" + std::to_string(size_int) + "_dex_file_execute.dex";
+            std::string dex_path = cyrus_dir + "/" + std::to_string(size_int) + "_dex_file_execute.dex";
             // 保存 class 列表
-            std::string classlist_path = fart_dir + "/" + std::to_string(size_int) + "_class_list_execute.txt";
+            std::string classlist_path = cyrus_dir + "/" + std::to_string(size_int) + "_class_list_execute.txt";
             
             int dexfilefp = open(dex_path.c_str(), O_RDONLY);
             if (dexfilefp >= 0) {
                 close(dexfilefp);
             } else {
-                LOG(INFO) << "[dumpDexFileByExecute] " << artmethod->PrettyMethod() << " dump dex to " << dex_path;
+                LOG(INFO) << "[traceDexExecution] " << artmethod->PrettyMethod() << " dump dex to " << dex_path;
 
                 int fp = open(dex_path.c_str(), O_CREAT | O_APPEND | O_RDWR, 0666);
                 if (fp >= 0) {
                     ssize_t w1 = write(fp, begin_, size_);
                     if (w1 < 0) {
-                        LOG(ERROR) << "dumpDexFileByExecute: Failed to write dex file";
+                        LOG(ERROR) << "traceDexExecution: Failed to write dex file";
                     }
                     fsync(fp);
                     close(fp);
@@ -232,27 +232,27 @@ namespace art {
 
                             ssize_t w2 = write(class_list_file, descriptor, strlen(descriptor));
                             if (w2 < 0) {
-                                LOG(ERROR) << "dumpDexFileByExecute: Failed to write class descriptor";
+                                LOG(ERROR) << "traceDexExecution: Failed to write class descriptor";
                             }
 
                             ssize_t w3 = write(class_list_file, "\n", 1);
                             if (w3 < 0) {
-                                LOG(ERROR) << "dumpDexFileByExecute: Failed to write newline";
+                                LOG(ERROR) << "traceDexExecution: Failed to write newline";
                             }
                         }
                         fsync(class_list_file);
                         close(class_list_file);
                     } else {
-                        LOG(ERROR) << "[dumpDexFileByExecute] " << class_list_file << " open failed, class_list_file=" << class_list_file;
+                        LOG(ERROR) << "[traceDexExecution] " << class_list_file << " open failed, class_list_file=" << class_list_file;
                     }
                 } else {
-                    LOG(ERROR) << "[dumpDexFileByExecute] " << dex_path << " open failed, fp=" << fp;
+                    LOG(ERROR) << "[traceDexExecution] " << dex_path << " open failed, fp=" << fp;
                 }
             }
     }
 
     //add
-    extern "C" void dumpArtMethod(ArtMethod* artmethod) REQUIRES_SHARED(Locks::mutator_lock_) {
+    extern "C" void traceMethodCode(ArtMethod* artmethod) REQUIRES_SHARED(Locks::mutator_lock_) {
             char szProcName[256] = {0};
             int procid = getpid();
 
@@ -263,20 +263,20 @@ namespace art {
             if (fcmdline >= 0) {
                 ssize_t result = read(fcmdline, szProcName, sizeof(szProcName) - 1);
                 if (result < 0) {
-                    LOG(ERROR) << "ArtMethod::dumpArtMethod: read cmdline failed.";
+                    LOG(ERROR) << "ArtMethod::traceMethodCode: read cmdline failed.";
                 }
                 close(fcmdline);
             } else {
-                LOG(ERROR) << "[dumpArtMethod] " << szCmdline << " open failed ";
+                LOG(ERROR) << "[traceMethodCode] " << szCmdline << " open failed ";
             }
 
             if (szProcName[0] == '\0') {
-                LOG(WARNING) << "[dumpArtMethod] 获取进程名失败：" << artmethod->PrettyMethod();
+                LOG(WARNING) << "[traceMethodCode] 获取进程名失败：" << artmethod->PrettyMethod();
                 return;
             }
 
             if (!isValidAndroidApp(szProcName)) {
-                LOG(WARNING) << "[dumpArtMethod] 当前进程 " << szProcName << " 非法，跳过 dex dump";
+                LOG(WARNING) << "[traceMethodCode] 当前进程 " << szProcName << " 非法，跳过 dex dump";
                 return;
             }
 
@@ -285,30 +285,30 @@ namespace art {
             size_t size_ = dex_file->Size();
             int size_int = static_cast<int>(size_);
 
-            // 创建目录：/data/data/<packageName>/cyurs
+            // 创建目录：/data/data/<packageName>/cyrus
             std::string base_dir = "/data/data/";
             std::string app_dir = base_dir + szProcName;
-            std::string fart_dir = app_dir + "/cyurs";
+            std::string cyrus_dir = app_dir + "/cyrus";
 
             ensure_dir_exists(app_dir);
-            ensure_dir_exists(fart_dir);
+            ensure_dir_exists(cyrus_dir);
 
             // 保存 dex 文件
-            std::string dex_path = fart_dir + "/" + std::to_string(size_int) + "_dex_file.dex";
+            std::string dex_path = cyrus_dir + "/" + std::to_string(size_int) + "_dex_file.dex";
             // 保存 class 列表
-            std::string class_list_path = fart_dir + "/" + std::to_string(size_int) + "_class_list.txt";
+            std::string class_list_path = cyrus_dir + "/" + std::to_string(size_int) + "_class_list.txt";
 
             int dexfilefp = open(dex_path.c_str(), O_RDONLY);
             if (dexfilefp >= 0) {
                 close(dexfilefp);
             } else {
-                LOG(INFO) << "[dumpArtMethod]" << artmethod->PrettyMethod() << " dump to " << dex_path;
+                LOG(INFO) << "[traceMethodCode]" << artmethod->PrettyMethod() << " dump to " << dex_path;
 
                 int fp = open(dex_path.c_str(), O_CREAT | O_APPEND | O_RDWR, 0666);
                 if (fp >= 0) {
                     ssize_t w = write(fp, begin_, size_);
                     if (w < 0) {
-                        LOG(ERROR) << "ArtMethod::dumpArtMethod: write dexfile failed -> " << dex_path;
+                        LOG(ERROR) << "ArtMethod::traceMethodCode: write dexfile failed -> " << dex_path;
                     }
                     fsync(fp);
                     close(fp);
@@ -321,21 +321,21 @@ namespace art {
 
                             ssize_t w1 = write(class_list_file, descriptor, strlen(descriptor));
                             if (w1 < 0) {
-                                LOG(ERROR) << "ArtMethod::dumpArtMethod: write class descriptor failed";
+                                LOG(ERROR) << "ArtMethod::traceMethodCode: write class descriptor failed";
                             }
 
                             ssize_t w2 = write(class_list_file, "\n", 1);
                             if (w2 < 0) {
-                                LOG(ERROR) << "ArtMethod::dumpArtMethod: write newline failed";
+                                LOG(ERROR) << "ArtMethod::traceMethodCode: write newline failed";
                             }
                         }
                         fsync(class_list_file);
                         close(class_list_file);
                     } else {
-                        LOG(ERROR) << "[dumpArtMethod] " << class_list_path << " open failed, class_list_file=" << class_list_file;
+                        LOG(ERROR) << "[traceMethodCode] " << class_list_path << " open failed, class_list_file=" << class_list_file;
                     }
                 } else {
-                    LOG(ERROR) << "[dumpArtMethod] " << dex_path << " open failed, fp=" << fp;
+                    LOG(ERROR) << "[traceMethodCode] " << dex_path << " open failed, fp=" << fp;
                 }
             }
 
@@ -347,7 +347,7 @@ namespace art {
                 CodeItemDataAccessor accessor(*dex_file, code_item);
                 if (accessor.TriesSize() > 0) {
                     const uint8_t* handler_data = accessor.GetCatchHandlerData();
-                    uint8_t* tail = codeitem_end(&handler_data);
+                    uint8_t* tail = getDexCodeItemEnd(&handler_data);
                     code_item_len = static_cast<int>(tail - item);
                 } else {
                     code_item_len = 16 + accessor.InsnsSizeInCodeUnits() * 2;
@@ -357,7 +357,7 @@ namespace art {
                 int offset = static_cast<int>(item - begin_);
                 pid_t tid = gettidv1();
                 // 保存 CodeItem
-                std::string ins_path = fart_dir + "/" + std::to_string(size_int) + "_ins_" + std::to_string(tid) + ".bin";
+                std::string ins_path = cyrus_dir + "/" + std::to_string(size_int) + "_ins_" + std::to_string(tid) + ".bin";
 
                 int fp2 = open(ins_path.c_str(), O_CREAT | O_APPEND | O_RDWR, 0666);
                 if (fp2 >= 0) {
@@ -370,40 +370,40 @@ namespace art {
 
                     ssize_t w3 = write(fp2, header.c_str(), header.length());
                     if (w3 < 0) {
-                        LOG(ERROR) << "ArtMethod::dumpArtMethod: write header failed";
+                        LOG(ERROR) << "ArtMethod::traceMethodCode: write header failed";
                     }
 
                     long outlen = 0;
-                    char* base64result = base64_encode((char*)item, (long)code_item_len, &outlen);
+                    char* base64result = encodeBase64Buffer((char*)item, (long)code_item_len, &outlen);
                     if (base64result != nullptr) {
                         ssize_t w4 = write(fp2, base64result, outlen);
                         if (w4 < 0) {
-                            LOG(ERROR) << "ArtMethod::dumpArtMethod: write base64 ins failed";
+                            LOG(ERROR) << "ArtMethod::traceMethodCode: write base64 ins failed";
                         }
                         free(base64result);
                     }
 
                     ssize_t w5 = write(fp2, "};", 2);
                     if (w5 < 0) {
-                        LOG(ERROR) << "ArtMethod::dumpArtMethod: write tail failed";
+                        LOG(ERROR) << "ArtMethod::traceMethodCode: write tail failed";
                     }
 
                     fsync(fp2);
                     close(fp2);
                 } else {
-                    LOG(ERROR) << "[dumpArtMethod] " << ins_path << " open failed, fp2=" << fp2;
+                    LOG(ERROR) << "[traceMethodCode] " << ins_path << " open failed, fp2=" << fp2;
                 }
             }
     }
 
     //add
-    extern "C" void myfartInvoke(ArtMethod* artmethod)  REQUIRES_SHARED(Locks::mutator_lock_) {
+    extern "C" void callNativeMethodInspector(ArtMethod* artmethod)  REQUIRES_SHARED(Locks::mutator_lock_) {
             JValue *result=nullptr;
             Thread *self=nullptr;
             uint32_t temp=6;
             uint32_t* args=&temp;
             uint32_t args_size=6;
-            artmethod->Invoke(self, args, args_size, result, "fart");
+            artmethod->Invoke(self, args, args_size, result, "startCodeInspection");
     }
 
     ArtMethod *ArtMethod::FromReflectedMethod(const ScopedObjectAccessAlreadyRunnable &soa, jobject jlr_method) {
@@ -649,7 +649,7 @@ namespace art {
                            const char* shorty) {
         //add
         if (self == nullptr) {
-            dumpArtMethod(this);
+            traceMethodCode(this);
             return;
         }
 

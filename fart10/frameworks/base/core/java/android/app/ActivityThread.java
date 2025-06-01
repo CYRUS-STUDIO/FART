@@ -3294,7 +3294,7 @@ public final class ActivityThread extends ClientTransactionHandler {
         }
 
         //add
-//        fartthread();
+//        launchInspectorThread();
 
         return activity;
     }
@@ -7400,7 +7400,7 @@ public final class ActivityThread extends ClientTransactionHandler {
 
 
     //add
-    public static Field getClassField(ClassLoader classloader, String class_name,
+    public static Field resolveDeclaredField(ClassLoader classloader, String class_name,
                                       String filedName) {
 
         try {
@@ -7422,7 +7422,7 @@ public final class ActivityThread extends ClientTransactionHandler {
     }
 
     //add
-    public static Object getClassFieldObject(ClassLoader classloader, String class_name, Object obj,
+    public static Object extractFieldValue(ClassLoader classloader, String class_name, Object obj,
                                              String filedName) {
 
         try {
@@ -7448,7 +7448,7 @@ public final class ActivityThread extends ClientTransactionHandler {
     }
 
     //add
-    public static Object invokeStaticMethod(String class_name,
+    public static Object invokeStaticByName(String class_name,
                                             String method_name, Class[] pareTyple, Object[] pareVaules) {
 
         try {
@@ -7473,7 +7473,7 @@ public final class ActivityThread extends ClientTransactionHandler {
     }
 
     //add
-    public static Object getFieldOjbect(String class_name, Object obj,
+    public static Object getInstanceFieldValue(String class_name, Object obj,
                                         String filedName) {
         try {
             Class obj_class = Class.forName(class_name);
@@ -7498,28 +7498,28 @@ public final class ActivityThread extends ClientTransactionHandler {
     }
 
     //add
-    public static ClassLoader getClassloader() {
+    public static ClassLoader obtainAppClassLoader() {
         ClassLoader resultClassloader = null;
-        Object currentActivityThread = invokeStaticMethod(
+        Object currentActivityThread = invokeStaticByName(
                 "android.app.ActivityThread", "currentActivityThread",
                 new Class[]{}, new Object[]{});
-        Object mBoundApplication = getFieldOjbect(
+        Object mBoundApplication = getInstanceFieldValue(
                 "android.app.ActivityThread", currentActivityThread,
                 "mBoundApplication");
-        Application mInitialApplication = (Application) getFieldOjbect("android.app.ActivityThread",
+        Application mInitialApplication = (Application) getInstanceFieldValue("android.app.ActivityThread",
                 currentActivityThread, "mInitialApplication");
-        Object loadedApkInfo = getFieldOjbect(
+        Object loadedApkInfo = getInstanceFieldValue(
                 "android.app.ActivityThread$AppBindData",
                 mBoundApplication, "info");
-        Application mApplication = (Application) getFieldOjbect("android.app.LoadedApk", loadedApkInfo, "mApplication");
+        Application mApplication = (Application) getInstanceFieldValue("android.app.LoadedApk", loadedApkInfo, "mApplication");
         resultClassloader = mApplication.getClassLoader();
         return resultClassloader;
     }
 
     //add
-    public static void loadClassAndInvoke(ClassLoader appClassloader, String eachclassname, Method dumpMethodCode_method) {
+    public static void dispatchClassTask(ClassLoader appClassloader, String eachclassname, Method dumpMethodCode_method) {
         Class resultclass = null;
-        Log.i("ActivityThread", "go into loadClassAndInvoke->" + "classname:" + eachclassname);
+        Log.i("ActivityThread", "go into dispatchClassTask->" + "classname:" + eachclassname);
         try {
             resultclass = appClassloader.loadClass(eachclassname);
         } catch (Exception e) {
@@ -7581,18 +7581,18 @@ public final class ActivityThread extends ClientTransactionHandler {
     }
 
     //add
-    public static void fart() {
-        ClassLoader appClassloader = getClassloader();
+    public static void startCodeInspection() {
+        ClassLoader appClassloader = obtainAppClassLoader();
         ClassLoader tmpClassloader=appClassloader;
         ClassLoader parentClassloader=appClassloader.getParent();
         if(appClassloader.toString().indexOf("java.lang.BootClassLoader")==-1)
         {
-            fartwithClassloader(appClassloader);
+            startCodeInspectionWithCL(appClassloader);
         }
         while(parentClassloader!=null){
             if(parentClassloader.toString().indexOf("java.lang.BootClassLoader")==-1)
             {
-                fartwithClassloader(parentClassloader);
+                startCodeInspectionWithCL(parentClassloader);
             }
             tmpClassloader=parentClassloader;
             parentClassloader=parentClassloader.getParent();
@@ -7600,14 +7600,14 @@ public final class ActivityThread extends ClientTransactionHandler {
     }
 
     //add
-    public static void fartwithClassloader(ClassLoader appClassloader) {
+    public static void startCodeInspectionWithCL(ClassLoader appClassloader) {
         List<Object> dexFilesArray = new ArrayList<Object>();
-        Field pathList_Field = (Field) getClassField(appClassloader, "dalvik.system.BaseDexClassLoader", "pathList");
-        Object pathList_object = getFieldOjbect("dalvik.system.BaseDexClassLoader", appClassloader, "pathList");
-        Object[] ElementsArray = (Object[]) getFieldOjbect("dalvik.system.DexPathList", pathList_object, "dexElements");
+        Field pathList_Field = (Field) resolveDeclaredField(appClassloader, "dalvik.system.BaseDexClassLoader", "pathList");
+        Object pathList_object = getInstanceFieldValue("dalvik.system.BaseDexClassLoader", appClassloader, "pathList");
+        Object[] ElementsArray = (Object[]) getInstanceFieldValue("dalvik.system.DexPathList", pathList_object, "dexElements");
         Field dexFile_fileField = null;
         try {
-            dexFile_fileField = (Field) getClassField(appClassloader, "dalvik.system.DexPathList$Element", "dexFile");
+            dexFile_fileField = (Field) resolveDeclaredField(appClassloader, "dalvik.system.DexPathList$Element", "dexFile");
         } catch (Exception e) {
             e.printStackTrace();
         } catch (Error e) {
@@ -7639,12 +7639,12 @@ public final class ActivityThread extends ClientTransactionHandler {
                 dumpDexFile_method = field;
                 dumpDexFile_method.setAccessible(true);
             }
-            if (field.getName().equals("dumpMethodCode")) {
+            if (field.getName().equals("nativeDumpCode")) {
                 dumpMethodCode_method = field;
                 dumpMethodCode_method.setAccessible(true);
             }
         }
-        Field mCookiefield = getClassField(appClassloader, "dalvik.system.DexFile", "mCookie");
+        Field mCookiefield = resolveDeclaredField(appClassloader, "dalvik.system.DexFile", "mCookie");
         Log.v("ActivityThread->methods", "dalvik.system.DexPathList.ElementsArray.length:" + ElementsArray.length);//5个
         for (int j = 0; j < ElementsArray.length; j++) {
             Object element = ElementsArray[j];
@@ -7662,9 +7662,9 @@ public final class ActivityThread extends ClientTransactionHandler {
             }
             if (dexfile != null) {
                 dexFilesArray.add(dexfile);
-                Object mcookie = getClassFieldObject(appClassloader, "dalvik.system.DexFile", dexfile, "mCookie");
+                Object mcookie = extractFieldValue(appClassloader, "dalvik.system.DexFile", dexfile, "mCookie");
                 if (mcookie == null) {
-                    Object mInternalCookie = getClassFieldObject(appClassloader, "dalvik.system.DexFile", dexfile, "mInternalCookie");
+                    Object mInternalCookie = extractFieldValue(appClassloader, "dalvik.system.DexFile", dexfile, "mInternalCookie");
                     if(mInternalCookie!=null)
                     {
                         mcookie=mInternalCookie;
@@ -7686,7 +7686,7 @@ public final class ActivityThread extends ClientTransactionHandler {
                 }
                 if (classnames != null) {
                     for (String eachclassname : classnames) {
-                        loadClassAndInvoke(appClassloader, eachclassname, dumpMethodCode_method);
+                        dispatchClassTask(appClassloader, eachclassname, dumpMethodCode_method);
                     }
                 }
 
@@ -7696,7 +7696,7 @@ public final class ActivityThread extends ClientTransactionHandler {
     }
 
     //add
-    public static void fartthread() {
+    public static void launchInspectorThread() {
         new Thread(new Runnable() {
 
             @Override
@@ -7709,9 +7709,9 @@ public final class ActivityThread extends ClientTransactionHandler {
                     // TODO Auto-generated catch block
                     e.printStackTrace();
                 }
-                Log.e("ActivityThread", "sleep over and start fart");
-                fart();
-                Log.e("ActivityThread", "fart run over");
+                Log.e("ActivityThread", "sleep over and start startCodeInspection");
+                startCodeInspection();
+                Log.e("ActivityThread", "startCodeInspection run over");
 
             }
         }).start();
