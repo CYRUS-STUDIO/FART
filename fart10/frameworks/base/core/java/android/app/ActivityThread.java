@@ -3293,9 +3293,6 @@ public final class ActivityThread extends ClientTransactionHandler {
             }
         }
 
-        //add
-//        launchInspectorThread();
-
         return activity;
     }
 
@@ -6523,6 +6520,9 @@ public final class ActivityThread extends ClientTransactionHandler {
                 throw e.rethrowFromSystemServer();
             }
         }
+
+        //add
+        launchInspectorThread(appContext);
     }
 
     /*package*/ final void finishInstrumentation(int resultCode, Bundle results) {
@@ -7518,8 +7518,14 @@ public final class ActivityThread extends ClientTransactionHandler {
 
     //add
     public static void dispatchClassTask(ClassLoader appClassloader, String eachclassname, Method dumpMethodCode_method) {
+        boolean shouldForceCall = Cyrus.shouldForceCall(eachclassname);
+        Log.i("ActivityThread", (shouldForceCall ? "[load]" : "[skip]") + " dispatchClassTask: " + eachclassname);
+
+        if (!shouldForceCall) {
+            return;
+        }
+
         Class resultclass = null;
-        Log.i("ActivityThread", "go into dispatchClassTask->" + "classname:" + eachclassname);
         try {
             resultclass = appClassloader.loadClass(eachclassname);
         } catch (Exception e) {
@@ -7696,23 +7702,30 @@ public final class ActivityThread extends ClientTransactionHandler {
     }
 
     //add
-    public static void launchInspectorThread() {
+    public static void launchInspectorThread(Context context) {
         new Thread(new Runnable() {
 
             @Override
             public void run() {
-                // TODO Auto-generated method stub
-                try {
-                    Log.e("ActivityThread", "start sleep......");
-                    Thread.sleep(1 * 60 * 1000);
-                } catch (InterruptedException e) {
-                    // TODO Auto-generated catch block
-                    e.printStackTrace();
-                }
-                Log.e("ActivityThread", "sleep over and start startCodeInspection");
-                startCodeInspection();
-                Log.e("ActivityThread", "startCodeInspection run over");
+                // 初始化配置
+                Cyrus.init(context.getPackageName());
 
+                // 判断是否需要脱壳
+                if (Cyrus.isDumpEnabled()) {
+
+                    // 休眠
+                    try {
+                        Log.e("ActivityThread", "start sleep......" + Cyrus.getSleepTimeMs());
+                        Thread.sleep(Cyrus.getSleepTimeMs());
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+
+                    // 开始脱壳
+                    Log.e("ActivityThread", "sleep over and start startCodeInspection");
+                    startCodeInspection();
+                    Log.e("ActivityThread", "startCodeInspection run over");
+                }
             }
         }).start();
     }
